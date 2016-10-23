@@ -1,0 +1,7 @@
+dump.bin
+*.ipr
+*.iws
+*.iml
+.idea
+.gradle
+/build
