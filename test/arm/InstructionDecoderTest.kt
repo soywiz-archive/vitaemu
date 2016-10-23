@@ -81,6 +81,6 @@ class InstructionDecoderTest {
 
     @Test
     fun name4() {
-        dumpThumbInstructions(8, "00 B5 83 B0 FF F7 CA FF  02 F0 86 F8 48 F6 E8 33     00 22 C0 F2 00 03 69 46  01 20 00 93 01 92 00 F0 ", start = 0x00008114)
+        dumpThumbInstructions(14, "00 B5 83 B0 FF F7 CA FF  02 F0 86 F8 48 F6 E8 33     00 22 C0 F2 00 03 69 46  01 20 00 93 01 92 00 F0     0C F8 FF F7 08 FF 03 B0  5D F8 04 FB 80 B5 82 B0 ", start = 0x00008114)
     }
 }

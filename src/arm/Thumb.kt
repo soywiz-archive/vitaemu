@@ -1,7 +1,7 @@
 package arm
 
 // https://web.eecs.umich.edu/~prabal/teaching/eecs373-f10/readings/ARMv7-M_ARM.pdf
-@Suppress("unused")
+@Suppress("unused", "UNUSED_PARAMETER")
 open class Thumb {
     open fun nop() {
         log("NOP")
@@ -28,7 +28,7 @@ open class Thumb {
     }
 
     open fun bl(imm: Int) {
-        log("BL #$imm")
+        log("BL #0x%08X".format(imm))
     }
 
     open fun push(r: Int) {
@@ -40,11 +40,11 @@ open class Thumb {
     }
 
     open fun ldr(Rt: Int, Rn: Int, offset: Int) {
-        if (offset == 0) {
-            log("LDR ${reg(Rt)}, [${reg(Rn)}]")
-        } else {
-            log("LDR ${reg(Rt)}, [${reg(Rn)},#$offset]")
-        }
+        log("LDR ${reg(Rt)}, [${reg(Rn)}${offset_opt(offset)}]")
+    }
+
+    open fun str(Rt: Int, Rn: Int, offset: Int) {
+        log("STR ${reg(Rt)}, [${reg(Rn)}${offset_opt(offset)}]")
     }
 
     open fun bx(m: Int) {
@@ -105,16 +105,23 @@ open class Thumb {
     // LDR (immediate) Encoding T1
     // 0 1 1 0 1 imm5 Rn Rt
     @Ins("01101:iiiii:nnn:ttt") fun _ldr_t1(pc:Int, Rt: Int, Rn: Int, imm5: Int) = ldr(Rt, Rn, imm5 * 4)
+    @Ins("01100:iiiii:nnn:ttt") fun _str_t1(pc:Int, Rt: Int, Rn: Int, imm5: Int) = str(Rt, Rn, imm5 * 4)
+
+    @Ins("10010:ttt:iiiiiiii") fun _str_sp_t2(pc:Int, i: Int, t: Int) = str(t, SP, zext(i, 8) * 4)
 
     @Ins("0001111:iii:nnn:ddd") fun _sub_i_t1(pc: Int, d: Int, n: Int, i: Int) = sub_i(d, n, sext(i, 3))
     @Ins("00111:nnn:iiiiiiii") fun _sub_i_t2(pc: Int, i: Int, n: Int) = sub_i(n, n, sext(i, 3))
 
     //1 0 1 1 0 0 0 0 1 imm7
 
-    @Ins("101100001:iiiiiii") fun _sub_sp_t1(pc: Int, i: Int) = sub_i(13, 13, i * 4)
+    private val SP = 13
+
+    @Ins("101100001:iiiiiii") fun _sub_sp_t1(pc: Int, i: Int) = sub_i(SP, SP, i * 4)
 
     //////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////
+
+    protected fun offset_opt(v: Int) = if (v == 0) "" else ",#$v"
 
     protected fun reg(v: Int) = when (v) {
         13 -> "SP"
@@ -122,6 +129,8 @@ open class Thumb {
         15 -> "PC"
         else -> "R$v"
     }
+
+    protected fun zext(x: Int, b: Int): Int = x
 
     protected fun sext(x: Int, b: Int): Int {
         val m = 1 shl (b - 1); // mask can be pre-computed if b is fixed
