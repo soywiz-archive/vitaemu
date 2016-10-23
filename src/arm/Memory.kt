@@ -36,11 +36,27 @@ class Memory(val size: Int) {
         }
     }
 
+    fun readByte(pos: Int): Int {
+        return r8(pos + 0)
+    }
+
     fun readShort(pos: Int): Int {
         return r8(pos + 0) or (r8(pos + 1) shl 8)
     }
 
     fun readInt(pos: Int): Int {
         return r8(pos + 0) or (r8(pos + 1) shl 8) or (r8(pos + 2) shl 16) or (r8(pos + 3) shl 24)
+    }
+
+    fun writeShort(pos: Int, value: Int) {
+        s8(pos, (value ushr 0) and 0xFF)
+        s8(pos, (value ushr 8) and 0xFF)
+    }
+
+    fun writeInt(pos: Int, value: Int) {
+        s8(pos, (value ushr 0) and 0xFF)
+        s8(pos, (value ushr 8) and 0xFF)
+        s8(pos, (value ushr 16) and 0xFF)
+        s8(pos, (value ushr 24) and 0xFF)
     }
 }

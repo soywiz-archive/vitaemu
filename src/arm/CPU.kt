@@ -1,6 +1,6 @@
 package arm
 
-class CPU {
+class CPU(val mem: Memory) {
     val R = IntArray(16)
 
     var SP: Int get() = R[13]; set(v) { R[13] = v }

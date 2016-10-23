@@ -9,6 +9,8 @@ val Short.ubyte: Int get() = this.toInt() and 0xFF
 val Char.ubyte: Int get() = this.toInt() and 0xFF
 val Byte.ubyte: Int get() = this.toInt() and 0xFF
 
+fun Int.bit(offset: Int) = ((this ushr offset) and 1) != 0
+
 fun Int.toBitString(count: Int = 32): String {
 	val out = CharArray(count)
 	for (n in 0 until count) {
