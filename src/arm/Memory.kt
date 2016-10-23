@@ -35,4 +35,12 @@ class Memory(val size: Int) {
             for (n in 0 until count) this@Memory[pos + n] = bytes[offset + n]
         }
     }
+
+    fun readShort(pos: Int): Int {
+        return r8(pos + 0) or (r8(pos + 1) shl 8)
+    }
+
+    fun readInt(pos: Int): Int {
+        return r8(pos + 0) or (r8(pos + 1) shl 8) or (r8(pos + 2) shl 16) or (r8(pos + 3) shl 24)
+    }
 }
