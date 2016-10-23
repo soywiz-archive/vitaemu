@@ -4,51 +4,55 @@ package arm
 @Suppress("unused", "UNUSED_PARAMETER")
 open class Thumb {
     open fun nop() {
-        log("NOP")
+        log { "NOP" }
     }
 
     open fun mov_r(d: Int, m: Int) {
-        log("MOV ${reg(d)}, ${reg(m)}")
+        log { "MOV ${reg(d)}, ${reg(m)}" }
     }
 
     open fun mov_i(d: Int, i: Int) {
-        log("MOVS ${reg(d)}, #$i")
+        log { "MOVS ${reg(d)}, #$i" }
     }
 
     open fun movw(d: Int, i: Int) {
-        log("MOVW ${reg(d)}, #$i")
+        log { "MOVW ${reg(d)}, #$i" }
     }
 
     open fun movt_w(d: Int, i: Int) {
-        log("MOVT.W ${reg(d)}, #$i")
+        log { "MOVT.W ${reg(d)}, #$i" }
     }
 
     open fun sub_i(d: Int, n: Int, i: Int) {
-        log("SUBS ${reg(d)}, ${reg(n)}, #$i")
+        log { "SUBS ${reg(d)}, ${reg(n)}, #$i" }
     }
 
-    open fun bl(imm: Int) {
-        log("BL #0x%08X".format(imm))
+    open fun add_i(d: Int, n: Int, i: Int) {
+        log { "ADD ${reg(d)}, ${reg(n)}, #$i" }
+    }
+
+    open fun bl(pc: Int, target: Int) {
+        log { "BL #0x%08X".format(target) }
     }
 
     open fun push(r: Int) {
-        log("PUSH {%s}".format(getRegList(r).map { reg(it) }.joinToString(", ")))
+        log { "PUSH {%s}".format(getRegList(r).map { reg(it) }.joinToString(", ")) }
     }
 
     open fun pop(r: Int) {
-        log("POP {%s}".format(getRegList(r).map { reg(it) }.joinToString(", ")))
+        log { "POP {%s}".format(getRegList(r).map { reg(it) }.joinToString(", ")) }
     }
 
     open fun ldr(Rt: Int, Rn: Int, offset: Int) {
-        log("LDR ${reg(Rt)}, [${reg(Rn)}${offset_opt(offset)}]")
+        log { "LDR ${reg(Rt)}, [${reg(Rn)}${offset_opt(offset)}]" }
     }
 
     open fun str(Rt: Int, Rn: Int, offset: Int) {
-        log("STR ${reg(Rt)}, [${reg(Rn)}${offset_opt(offset)}]")
+        log { "STR ${reg(Rt)}, [${reg(Rn)}${offset_opt(offset)}]" }
     }
 
     open fun bx(m: Int) {
-        log("BX ${reg(m)}")
+        log { "BX ${reg(m)}" }
     }
 
     //////////////////////////////////////////////////////////////////////////////////////
@@ -99,7 +103,7 @@ open class Thumb {
         out = out or (imm10 shl 11)
         out = out or (imm11 shl 0)
         val imm = sext(out, 24) + 2
-        bl(pc + imm)
+        bl(pc, pc + imm)
     }
 
     // LDR (immediate) Encoding T1
@@ -114,9 +118,53 @@ open class Thumb {
 
     //1 0 1 1 0 0 0 0 1 imm7
 
-    private val SP = 13
-
     @Ins("101100001:iiiiiii") fun _sub_sp_t1(pc: Int, i: Int) = sub_i(SP, SP, i * 4)
+    @Ins("101100000:iiiiiii") fun _add_sp_t1(pc: Int, i: Int) = add_i(SP, SP, i * 4)
+
+    // 111110001101 Rn || Rt imm12
+    // Rt imm12 || 111110001101 Rn
+    @Ins("tttt:iiiiiiiiiiii::111110001101:nnnn")
+    fun _ldr_w(pc: Int, n: Int, i: Int, t: Int) {
+        println("_ldr_w $pc, $n, $i, $t")
+    }
+
+    // 1 1 1 1 1 0 0 0 0 1 0 1 Rn || Rt 0 0 0 0 0 0 imm2 Rm
+    // Rt 0 0 0 0 0 0 imm2 Rm || 1 1 1 1 1 0 0 0 0 1 0 1 Rn
+    @Ins("tttt:000000:ii:mmmm::111110000101:nnnn")
+    fun _ldr_w2(pc: Int, n: Int, m: Int, i: Int, t: Int) {
+        println("_ldr_w2 $pc, $n, $m, $i, $t")
+    }
+
+    // 1 1 1 1 1 0 0 0 U 1 0 1 1 1 1 1 || Rt imm12
+    // Rt imm12 || 11111000 : U : 1011111
+
+    @Ins("tttt:iiiiiiiiiiii:11111000:U:1011111")
+    fun _ldr__(pc: Int, U: Int, i: Int, t: Int) {
+        println("_ldr__:$pc, $U, $i, $t")
+    }
+
+    //1 1 1 1 1 0 0 0 0 1 0 1 Rn || Rt 1 P U W imm8
+    //Rt 1 P U W imm8 || 1 1 1 1 1 0 0 0 0 1 0 1 Rn
+    @Ins("tttt:1:p:u:w:iiiiiiii::111110000101:nnnn")
+    fun _ldr_i_T4(pc: Int, Rn: Int, imm8: Int, wback: Int, add: Int, index:Int, Rt:Int) {
+        //if Rn == ’1111’ then SEE LDR (literal);
+        //if P == ’1’ && U == ’1’ && W == ’0’ then SEE LDRT;
+        //if Rn == ’1101’ && P == ’0’ && U == ’1’ && W == ’1’ && imm8 == ’00000100’ then SEE POP;
+        //if P == ’0’ && W == ’0’ then UNDEFINED;
+        //t = UInt(Rt); n = UInt(Rn); imm32 = ZeroExtend(imm8, 32);
+        //index = (P == ’1’); add = (U == ’1’); wback = (W == ’1’);
+        //if (wback && n == t) || (t == 15 && InITBlock() && !LastInITBlock()) then UNPREDICTABLE;
+        val simm8 = if (add == 1) +imm8 else -imm8
+        val offset = if (wback == 1) simm8 else simm8
+        val suffix = if (wback == 1) ".W" else ""
+
+        if (index == 1) {
+            log { "LDR$suffix ${reg(Rt)}, [${reg(Rn)}, #$offset]" }
+        } else {
+            log { "LDR$suffix ${reg(Rt)}, [${reg(Rn)}],#$offset" }
+        }
+
+    }
 
     //////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////
@@ -140,7 +188,17 @@ open class Thumb {
     private fun getRegList(r: Int) = (0 until 16).filter { ((r ushr it) and 1) != 0 }
     private fun getRegList(r: Int, M: Int, P: Int) = getRegList(r or (M shl 14) or (P shl 15))
 
-    open fun log(s: String) {
+    open val doLog = true
+
+    inline protected fun log(s: () -> String) {
+        if (doLog) _log(s())
+    }
+
+    open protected fun _log(s: String) {
         System.out.println(s)
     }
+
+    protected val SP = 13
+    protected val LR = 14
+    protected val PC = 15
 }

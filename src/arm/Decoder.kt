@@ -6,24 +6,18 @@ interface Decoder<T> {
 }
 
 fun <T> createSimpleSlowDecoder(clazz: Class<T>): Decoder<T> {
-    val iList = arrayListOf<Instruction>()
+    val iList = arrayListOf<Instruction<T>>()
     for (method in clazz.declaredMethods) {
         val ins = method.getAnnotation(Ins::class.java)
         if (ins != null) {
-            iList += Instruction(ins.pattern, method)
+            iList += Instruction<T>(ins.pattern, method)
         }
     }
 
     return object : Decoder<T> {
         override fun execute(pc: Int, code: Int, handler: T): Int {
             for (i in iList) {
-                if (i.matches(code)) {
-                    //println(i)
-                    //println(handler)
-                    val args = i.args.map { it.extract(code) }.toTypedArray()
-                    i.method.invoke(handler, pc, *args)
-                    return i.size
-                }
+                if (i.matches(code)) return i.call(pc, code, handler)
             }
             println("Unmatched code %04X".format(code and 0xFFFF))
             return 2

@@ -6,7 +6,7 @@ import java.lang.reflect.Method
 @Suppress("unused")
 annotation class Ins(val pattern: String)
 
-class Instruction(val pattern: String, val method: Method) {
+class Instruction<T>(val pattern: String, val method: Method) {
     class Arg(val name: String, val offset: Int, val length: Int) {
         val mask = (1 shl length) - 1
         fun extract(code: Int) = (code ushr offset) and mask
@@ -18,6 +18,12 @@ class Instruction(val pattern: String, val method: Method) {
     val args = arrayListOf<Arg>()
 
     fun matches(v: Int) = (v and mask) == value
+
+    fun call(pc: Int, code: Int, handler: T): Int {
+        val args = args.map { it.extract(code) }.toTypedArray()
+        method.invoke(handler, pc, *args)
+        return size
+    }
 
     init {
         var pos = 0
@@ -41,6 +47,7 @@ class Instruction(val pattern: String, val method: Method) {
                 pos += chunk.length
             }
         }
+        if ((pos % 16) != 0) invalidOp("Size must be multiple of 16")
         size = pos / 8
     }
 

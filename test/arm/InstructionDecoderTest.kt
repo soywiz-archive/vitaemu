@@ -33,16 +33,16 @@ class InstructionDecoderTest {
         println("-----------------")
     }
 
-    private fun decodeThumbInstructions(count: Int, s: String): List<String> {
+    private fun decodeThumbInstructions(count: Int, s: String, start: Int = 0): List<String> {
         val thumb = object : Thumb() {
             val out = arrayListOf<String>()
 
-            override fun log(s: String) {
+            override fun _log(s: String) {
                 out += s
             }
         }
-        memory.stream.slice().writeBytes(s.parseHex())
-        var PC = 0
+        memory.stream.slice(start).writeBytes(s.parseHex())
+        var PC = start
         for (n in 0 until count) PC += thumbDecoder.execute(PC, memory.readInt(PC), thumb)
         return thumb.out
     }
@@ -66,14 +66,14 @@ class InstructionDecoderTest {
     fun name3() {
         Assert.assertEquals(
                 listOf(
-                    "PUSH {R3, LR}",
-                    "MOVS R1, #0",
-                    "MOV R4, R0",
-                    "BL #9826",
-                    "MOVW R3, #35712",
-                    "MOVT.W R3, #0",
-                    "LDR R0, [R3]",
-                    "LDR R3, [R0,#60]"
+                        "PUSH {R3, LR}",
+                        "MOVS R1, #0",
+                        "MOV R4, R0",
+                        "BL #0x00002668",
+                        "MOVW R3, #35712",
+                        "MOVT.W R3, #0",
+                        "LDR R0, [R3]",
+                        "LDR R3, [R0,#60]"
                 ),
                 decodeThumbInstructions(8, "08 B5 00 21 04 46 04 F0  60 FE 48 F6 80 33 C0 F2 00 03 18 68 C3 6B 03 B1 18 68 C3 6B")
         )
@@ -81,6 +81,25 @@ class InstructionDecoderTest {
 
     @Test
     fun name4() {
-        dumpThumbInstructions(14, "00 B5 83 B0 FF F7 CA FF  02 F0 86 F8 48 F6 E8 33     00 22 C0 F2 00 03 69 46  01 20 00 93 01 92 00 F0     0C F8 FF F7 08 FF 03 B0  5D F8 04 FB 80 B5 82 B0 ", start = 0x00008114)
+        Assert.assertEquals(
+                listOf(
+                        "PUSH {LR}",
+                        "SUBS SP, SP, #12",
+                        "BL #0x000080E4",
+                        "BL #0x000091A4",
+                        "MOVW R3, #35816",
+                        "MOVS R2, #0",
+                        "MOVT.W R3, #0",
+                        "MOV R1, SP",
+                        "MOVS R0, #1",
+                        "STR R3, [SP]",
+                        "STR R2, [SP,#4]",
+                        "BL #0x00008140",
+                        "BL #0x00008040",
+                        "ADD SP, SP, #12",
+                        "LDR.W PC, [SP],#4"
+                ),
+                decodeThumbInstructions(15, "00 B5 83 B0 FF F7 CA FF  02 F0 86 F8 48 F6 E8 33     00 22 C0 F2 00 03 69 46  01 20 00 93 01 92 00 F0     0C F8 FF F7 08 FF 03 B0  5D F8 04 FB 80 B5 82 B0 ", start = 0x00008114)
+        )
     }
 }
